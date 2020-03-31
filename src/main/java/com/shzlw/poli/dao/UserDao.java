@@ -44,6 +44,18 @@ public class UserDao {
         }
     }
 
+    public List<User> findByUsername(String username) {
+        String sql = "SELECT id, username, name, sys_role "
+            + "FROM p_user "
+            + "WHERE username=?";
+        try {
+            List<User> userList = jt.query(sql, new Object[]{username}, new UserInfoRowMapper());
+            return userList;
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+    }
+
     public User findByUsernameAndTempPassword(String username, String rawTempPassword) {
         String encryptedPassword = PasswordUtil.getMd5Hash(rawTempPassword);
         String sql = "SELECT id, username, name, sys_role "
@@ -174,15 +186,16 @@ public class UserDao {
         });
     }
 
-    public long insertUser(String username, String name, String rawTempPassword, String sysRole) {
+    public long insertUser(String username, String name, String rawTempPassword, String sysRole, Integer userType) {
         String encryptedPassword = PasswordUtil.getMd5Hash(rawTempPassword);
-        String sql = "INSERT INTO p_user(username, name, temp_password, sys_role) "
+        String sql = "INSERT INTO p_user(username, name, temp_password, sys_role, type) "
                     + "VALUES(:username, :name, :temp_password, :sys_role)";
         MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue(User.USERNAME, username);
         params.addValue(User.NAME, name);
         params.addValue(User.TEMP_PASSWORD, encryptedPassword);
         params.addValue(User.SYS_ROLE, sysRole);
+        params.addValue(User.TYPE,userType);
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
         npjt.update(sql, params, keyHolder, new String[] { User.ID });
@@ -281,6 +294,7 @@ public class UserDao {
             r.setUsername(rs.getString(User.USERNAME));
             r.setName(rs.getString(User.NAME));
             r.setSysRole(rs.getString(User.SYS_ROLE));
+            r.setType(rs.getInt(User.TYPE));
             return r;
         }
     }
@@ -294,6 +308,7 @@ public class UserDao {
             r.setName(rs.getString(User.NAME));
             r.setSysRole(rs.getString(User.SYS_ROLE));
             r.setApiKey(rs.getString(User.API_KEY));
+            r.setType(rs.getInt(User.TYPE));
             return r;
         }
     }
@@ -307,6 +322,7 @@ public class UserDao {
             r.setName(rs.getString(User.NAME));
             r.setSysRole(rs.getString(User.SYS_ROLE));
             r.setSessionKey(rs.getString(User.SESSION_KEY));
+            r.setType(rs.getInt(User.TYPE));
             return r;
         }
     }

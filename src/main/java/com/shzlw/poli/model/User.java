@@ -1,10 +1,13 @@
 package com.shzlw.poli.model;
 
+import lombok.Data;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+@Data
 public class User {
 
     public static final String ID = "id";
@@ -16,6 +19,7 @@ public class User {
     public static final String SESSION_TIMEOUT = "session_timeout";
     public static final String SYS_ROLE = "sys_role";
     public static final String API_KEY = "api_key";
+    public static final String TYPE = "type";
 
     private long id;
     private String username;
@@ -25,6 +29,11 @@ public class User {
     private String sessionKey;
     private LocalDateTime sessionTimeout;
     private String sysRole;
+    /**
+     * 0：本地用户
+     * 1：UC用户
+     */
+    private Integer type;
     private String apiKey;
 
     private List<Long> userGroups = new ArrayList<>();
@@ -32,94 +41,6 @@ public class User {
     private List<UserAttribute> userAttributes = new ArrayList<>();
 
     public User() {}
-
-    public long getId() {
-        return id;
-    }
-
-    public void setId(long id) {
-        this.id = id;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getTempPassword() {
-        return tempPassword;
-    }
-
-    public void setTempPassword(String tempPassword) {
-        this.tempPassword = tempPassword;
-    }
-
-    public String getSessionKey() {
-        return sessionKey;
-    }
-
-    public void setSessionKey(String sessionKey) {
-        this.sessionKey = sessionKey;
-    }
-
-    public LocalDateTime getSessionTimeout() {
-        return sessionTimeout;
-    }
-
-    public void setSessionTimeout(LocalDateTime sessionTimeout) {
-        this.sessionTimeout = sessionTimeout;
-    }
-
-    public String getSysRole() {
-        return sysRole;
-    }
-
-    public void setSysRole(String sysRole) {
-        this.sysRole = sysRole;
-    }
-
-    public String getApiKey() {
-        return apiKey;
-    }
-
-    public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
-    }
-
-    public List<Long> getUserGroups() {
-        return userGroups;
-    }
-
-    public void setUserGroups(List<Long> userGroups) {
-        this.userGroups = userGroups;
-    }
-
-    public List<UserAttribute> getUserAttributes() {
-        return userAttributes;
-    }
-
-    public void setUserAttributes(List<UserAttribute> userAttributes) {
-        this.userAttributes = userAttributes;
-    }
 
     @Override
     public boolean equals(Object o) {

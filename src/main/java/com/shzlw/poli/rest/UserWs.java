@@ -1,14 +1,18 @@
 package com.shzlw.poli.rest;
 
+import com.shzlw.poli.constant.UserConstant;
 import com.shzlw.poli.dao.CannedReportDao;
 import com.shzlw.poli.dao.SharedReportDao;
 import com.shzlw.poli.dao.UserDao;
 import com.shzlw.poli.dao.UserFavouriteDao;
+import com.shzlw.poli.dto.BaseResponse;
 import com.shzlw.poli.model.User;
 import com.shzlw.poli.model.UserAttribute;
 import com.shzlw.poli.service.SharedReportService;
 import com.shzlw.poli.service.UserService;
+import com.shzlw.poli.service.ZhizhiUserSSOService;
 import com.shzlw.poli.util.Constants;
+import com.zhizhi.uc.sdk.result.SSOReulstExt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +50,9 @@ public class UserWs {
     @Autowired
     SharedReportService sharedReportService;
 
+    @Autowired
+    ZhizhiUserSSOService ssoService;
+
     @RequestMapping(method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @Transactional(readOnly = true)
     public List<User> findAll(HttpServletRequest request) {
@@ -75,17 +82,28 @@ public class UserWs {
 
     @RequestMapping(method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
     @Transactional
-    public ResponseEntity<Long> add(@RequestBody User user,
+    public BaseResponse add(@RequestBody User user,
                                     HttpServletRequest request) {
+        //判断新增加的用户类型
+        final Integer userType = user.getType();
+
         User myUser = (User) request.getAttribute(Constants.HTTP_REQUEST_ATTR_USER);
         if (!isDeveloperOperationValid(myUser.getSysRole(), user)) {
-            return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+            return BaseResponse.refuse("操作者无新增用户的权限！");
         }
 
-        long userId = userDao.insertUser(user.getUsername(), user.getName(), user.getTempPassword(), user.getSysRole());
+        //去UC查询用户信息
+        if(UserConstant.ZHIZHI_USER_CENTER_ACCOUNT_TYPE.equals(userType)) {
+            SSOReulstExt ssoReulstExt = ssoService.getUserByAccount("ZZ_REPORT_"+System.currentTimeMillis(),user.getUsername());
+            if(null == ssoReulstExt) {
+                return BaseResponse.bizError("无法根据用户名 ->"+user.getUsername()+"<- 找到B2B用户，请检查用户名!");
+            }
+        }
+
+        long userId = userDao.insertUser(user.getUsername(), user.getName(), user.getTempPassword(), user.getSysRole(), user.getType());
         userDao.insertUserGroups(userId, user.getUserGroups());
         userDao.insertUserAttributes(userId, user.getUserAttributes());
-        return new ResponseEntity<Long>(userId, HttpStatus.CREATED);
+        return BaseResponse.success("创建账号成功！");
     }
 
     @RequestMapping(method = RequestMethod.PUT)

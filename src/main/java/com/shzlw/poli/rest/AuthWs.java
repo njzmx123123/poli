@@ -1,12 +1,16 @@
 package com.shzlw.poli.rest;
 
+import com.shzlw.poli.constant.UserConstant;
 import com.shzlw.poli.dao.UserDao;
 import com.shzlw.poli.dto.LoginResponse;
 import com.shzlw.poli.model.SharedReport;
 import com.shzlw.poli.model.User;
 import com.shzlw.poli.service.UserService;
+import com.shzlw.poli.service.ZhizhiUserSSOService;
 import com.shzlw.poli.util.Constants;
 import com.shzlw.poli.util.PasswordUtil;
+import com.zhizhi.uc.sdk.result.SSOReulstExt;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/auth")
@@ -27,6 +32,10 @@ public class AuthWs {
     @Autowired
     UserService userService;
 
+    @Autowired
+    private ZhizhiUserSSOService ssoService;
+
+    public static final String USER_ACCOUNT_ERROR = "User account error!";
     public static final String INVALID_USERNAME_PASSWORD = "Invalid username or password.";
     public static final String USE_MORE_CHARACTERS = "Use 8 or more characters.";
     public static final String INVALID_API_KEY = "Invalid api key.";
@@ -35,22 +44,36 @@ public class AuthWs {
     @RequestMapping(value="/login/user", method = RequestMethod.POST)
     @Transactional
     public LoginResponse loginByUser(@RequestBody User loginInfo, HttpServletResponse response) {
-        String username = loginInfo.getUsername();
-        String password = loginInfo.getPassword();
+        final String username = loginInfo.getUsername();
+        final String password = loginInfo.getPassword();
 
-        boolean isTempPassword = false;
-        User user = userDao.findByUsernameAndPassword(username, password);
-        if (user == null) {
-            user = userDao.findByUsernameAndTempPassword(username, password);
-            if (user == null) {
+        //先请求本地库在查询uc库
+        List<User> users = authLocal(username);
+        if(null == users) {
+            return LoginResponse.ofError(INVALID_USERNAME_PASSWORD);
+        }
+
+        //根据用户信息对密码进行校验
+        if(users.size()>1) {
+            return LoginResponse.ofError(USER_ACCOUNT_ERROR);
+        }
+
+        final User user = users.get(0);
+        final String newSessionKey = getNewSessionKey();
+
+        //校验密码
+        if(UserConstant.LOCAL_USER_ACCOUNT_TYPE.equals(user.getType())) {
+            if(!user.getPassword().equals(password)) {
                 return LoginResponse.ofError(INVALID_USERNAME_PASSWORD);
-            } else {
-                isTempPassword = true;
+            }
+        }else if(UserConstant.ZHIZHI_USER_CENTER_ACCOUNT_TYPE.equals(user.getType())) {
+            SSOReulstExt ssoReulstExt = ssoService.login("TI_"+newSessionKey,username,password,newSessionKey);
+            if(null == ssoReulstExt) {
+                return LoginResponse.ofError(INVALID_USERNAME_PASSWORD);
             }
         }
 
         String oldSessionKey = user.getSessionKey();
-        String newSessionKey = getNewSessionKey();
         userDao.updateSessionKey(user.getId(), newSessionKey);
         user.setUserAttributes(userDao.findUserAttributes(user.getId()));
         userService.newOrUpdateUser(user, oldSessionKey, newSessionKey);
@@ -60,7 +83,12 @@ public class AuthWs {
         sessionKeyCookie.setPath("/");
         response.addCookie(sessionKeyCookie);
 
-        return LoginResponse.ofSuccess(user.getUsername(), user.getSysRole(), isTempPassword);
+        return LoginResponse.ofSuccess(user.getUsername(), user.getSysRole(), false);
+    }
+
+    @NotNull
+    private List<User> authLocal(String username) {
+        return userDao.findByUsername(username);
     }
 
     @RequestMapping(value="/login/cookie", method= RequestMethod.POST)
