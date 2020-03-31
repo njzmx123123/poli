@@ -13,6 +13,7 @@ import com.shzlw.poli.service.UserService;
 import com.shzlw.poli.service.ZhizhiUserSSOService;
 import com.shzlw.poli.util.Constants;
 import com.zhizhi.uc.sdk.result.SSOReulstExt;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,11 +27,10 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/ws/user")
 public class UserWs {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(UserWs.class);
 
     @Autowired
     UserDao userDao;
