@@ -33,9 +33,9 @@ public class UserDao {
 
     public User findByUsernameAndPassword(String username, String rawPassword) {
         String encryptedPassword = PasswordUtil.getEncryptedPassword(rawPassword);
-        String sql = "SELECT id, username, name, sys_role, type"
+        String sql = "SELECT id, username, name, sys_role, type "
                     + "FROM p_user "
-                    + "WHERE username=? AND password=?";
+                    + "WHERE username=? AND password=? ";
         try {
             User user = (User) jt.queryForObject(sql, new Object[]{username, encryptedPassword}, new UserInfoRowMapper());
             return user;
@@ -127,10 +127,10 @@ public class UserDao {
     }
 
     public User findById(long id) {
-        String sql = "SELECT id, username, name, sys_role "
+        String sql = "SELECT id, username, name, sys_role, type "
                     + "FROM p_user WHERE id=?";
         try {
-            User user = (User) jt.queryForObject(sql, new Object[]{ id }, new UserInfoRowMapper());
+            User user = (User) jt.queryForObject(sql, new Object[]{ id }, new UserInfoRowWithoutPwdMapper());
             return user;
         } catch (EmptyResultDataAccessException e) {
             return null;
@@ -155,15 +155,15 @@ public class UserDao {
     }
 
     public List<User> findNonAdminUsers(long myUserId) {
-        String sql = "SELECT id, username, name, sys_role "
+        String sql = "SELECT id, username, name, sys_role, type "
                     + "FROM p_user WHERE sys_role IN ('viewer', 'developer') AND id != ?";
-        return jt.query(sql, new Object[]{myUserId}, new UserInfoRowMapper());
+        return jt.query(sql, new Object[]{myUserId}, new UserInfoRowWithoutPwdMapper());
     }
 
     public List<User> findViewerUsers(long myUserId) {
-        String sql = "SELECT id, username, name, sys_role "
+        String sql = "SELECT id, username, name, sys_role, type "
                     + "FROM p_user WHERE sys_role = 'viewer' AND id != ?";
-        return jt.query(sql, new Object[]{myUserId}, new UserInfoRowMapper());
+        return jt.query(sql, new Object[]{myUserId}, new UserInfoRowWithoutPwdMapper());
     }
 
     public List<Long> findUserGroups(long userId) {
