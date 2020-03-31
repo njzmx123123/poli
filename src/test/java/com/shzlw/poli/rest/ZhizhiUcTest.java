@@ -1,7 +1,6 @@
 package com.shzlw.poli.rest;
 
 import com.shzlw.poli.service.ZhizhiUserSSOService;
-import com.zhizhi.common.utils.AESUtil;
 import com.zhizhi.common.utils.Sha256Utils;
 import com.zhizhi.uc.sdk.result.SSOReulstExt;
 import org.junit.Test;

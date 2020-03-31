@@ -32,7 +32,7 @@ public class PasswordUtilTest {
     @Test
     public void testGenerateAdminPassword() {
         String password = "adminadmin";
-        Assert.assertNotNull(PasswordUtil.getMd5Hash(password));
+        Assert.assertNotNull(PasswordUtil.getEncryptedPassword(password));
     }
 
     @Test

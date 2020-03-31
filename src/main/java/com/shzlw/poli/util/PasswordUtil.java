@@ -1,5 +1,7 @@
 package com.shzlw.poli.util;
 
+import org.springframework.util.StringUtils;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -90,6 +92,9 @@ public final class PasswordUtil {
     }
 
     public static String getDecryptedPassword(String password) {
+        if(StringUtils.isEmpty(password)) {
+            return null;
+        }
         String p = decrypt(password);
         int saltLength = Constants.PASSWORD_SALT.length();
         return p.substring(saltLength);

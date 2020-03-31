@@ -9,12 +9,14 @@ import com.shzlw.poli.service.UserService;
 import com.shzlw.poli.service.ZhizhiUserSSOService;
 import com.shzlw.poli.util.Constants;
 import com.shzlw.poli.util.PasswordUtil;
+import com.zhizhi.common.utils.Sha256Utils;
 import com.zhizhi.uc.sdk.result.SSOReulstExt;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.Cookie;
@@ -61,13 +63,22 @@ public class AuthWs {
         final User user = users.get(0);
         final String newSessionKey = getNewSessionKey();
 
+        boolean isTempPwd = false;
+
         //校验密码
         if(UserConstant.LOCAL_USER_ACCOUNT_TYPE.equals(user.getType())) {
-            if(!user.getPassword().equals(password)) {
+
+            //保留临时密码重置逻辑
+            if(StringUtils.isEmpty(user.getPassword())) {
+                if(!user.getTempPassword().equals(password)) {
+                    return LoginResponse.ofError(INVALID_USERNAME_PASSWORD);
+                }
+                isTempPwd = true;
+            }else if(!user.getPassword().equals(password)) {
                 return LoginResponse.ofError(INVALID_USERNAME_PASSWORD);
             }
         }else if(UserConstant.ZHIZHI_USER_CENTER_ACCOUNT_TYPE.equals(user.getType())) {
-            SSOReulstExt ssoReulstExt = ssoService.login("TI_"+newSessionKey,username,password,newSessionKey);
+            SSOReulstExt ssoReulstExt = ssoService.login("TI_"+newSessionKey,username, Sha256Utils.getSHA256(password),newSessionKey);
             if(null == ssoReulstExt) {
                 return LoginResponse.ofError(INVALID_USERNAME_PASSWORD);
             }
@@ -83,7 +94,7 @@ public class AuthWs {
         sessionKeyCookie.setPath("/");
         response.addCookie(sessionKeyCookie);
 
-        return LoginResponse.ofSuccess(user.getUsername(), user.getSysRole(), false);
+        return LoginResponse.ofSuccess(user.getUsername(), user.getSysRole(), isTempPwd);
     }
 
     @NotNull

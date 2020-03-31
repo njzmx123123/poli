@@ -32,8 +32,8 @@ public class UserDao {
     NamedParameterJdbcTemplate npjt;
 
     public User findByUsernameAndPassword(String username, String rawPassword) {
-        String encryptedPassword = PasswordUtil.getMd5Hash(rawPassword);
-        String sql = "SELECT id, username, name, sys_role "
+        String encryptedPassword = PasswordUtil.getEncryptedPassword(rawPassword);
+        String sql = "SELECT id, username, name, sys_role, type"
                     + "FROM p_user "
                     + "WHERE username=? AND password=?";
         try {
@@ -45,7 +45,7 @@ public class UserDao {
     }
 
     public List<User> findByUsername(String username) {
-        String sql = "SELECT id, username, name, sys_role "
+        String sql = "SELECT id, username, password, temp_password, name, sys_role, type "
             + "FROM p_user "
             + "WHERE username=?";
         try {
@@ -57,7 +57,7 @@ public class UserDao {
     }
 
     public User findByUsernameAndTempPassword(String username, String rawTempPassword) {
-        String encryptedPassword = PasswordUtil.getMd5Hash(rawTempPassword);
+        String encryptedPassword = PasswordUtil.getEncryptedPassword(rawTempPassword);
         String sql = "SELECT id, username, name, sys_role "
                     + "FROM p_user "
                     + "WHERE username=? AND temp_password=?";
@@ -70,10 +70,10 @@ public class UserDao {
     }
 
     public User findBySessionKey(String sessionKey) {
-        String sql = "SELECT id, username, name, sys_role "
+        String sql = "SELECT id, username, name, sys_role, type "
                     + "FROM p_user WHERE session_key=?";
         try {
-            User user = (User) jt.queryForObject(sql, new Object[]{ sessionKey }, new UserInfoRowMapper());
+            User user = (User) jt.queryForObject(sql, new Object[]{ sessionKey }, new UserInfoRowWithoutPwdMapper());
             return user;
         } catch (EmptyResultDataAccessException e) {
             return null;
@@ -81,7 +81,7 @@ public class UserDao {
     }
 
     public User findByApiKey(String apiKey) {
-        String sql = "SELECT id, username, name, sys_role, session_key "
+        String sql = "SELECT id, username, name, sys_role, session_key, type "
                     + "FROM p_user WHERE api_key=?";
         try {
             User user = (User) jt.queryForObject(sql, new Object[]{ apiKey }, new UserSesssionKeyMapper());
@@ -149,7 +149,7 @@ public class UserDao {
     }
 
     public int updateTempPassword(long userId, String rawNewPassword) {
-        String encryptedPassword = PasswordUtil.getMd5Hash(rawNewPassword);
+        String encryptedPassword = PasswordUtil.getEncryptedPassword(rawNewPassword);
         String sql = "UPDATE p_user SET temp_password=NULL, password=? WHERE id=?";
         return jt.update(sql, new Object[] { encryptedPassword, userId });
     }
@@ -187,9 +187,9 @@ public class UserDao {
     }
 
     public long insertUser(String username, String name, String rawTempPassword, String sysRole, Integer userType) {
-        String encryptedPassword = PasswordUtil.getMd5Hash(rawTempPassword);
+        String encryptedPassword = PasswordUtil.getEncryptedPassword(rawTempPassword);
         String sql = "INSERT INTO p_user(username, name, temp_password, sys_role, type) "
-                    + "VALUES(:username, :name, :temp_password, :sys_role)";
+                    + "VALUES(:username, :name, :temp_password, :sys_role, :type)";
         MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue(User.USERNAME, username);
         params.addValue(User.NAME, name);
@@ -238,15 +238,16 @@ public class UserDao {
     public long updateUser(User user) {
         String rawTempPassword = user.getTempPassword();
         if (StringUtils.isEmpty(rawTempPassword)) {
-            String sql = "UPDATE p_user SET username=?, name=?, sys_role=? WHERE id=?";
+            String sql = "UPDATE p_user SET username=?, name=?, sys_role=? ,type=? WHERE id=?";
             return jt.update(sql, new Object[]{
                     user.getUsername(),
                     user.getName(),
                     user.getSysRole(),
-                    user.getId()
+                    user.getId(),
+                    user.getType()
             });
         } else {
-            String encryptedPassword = PasswordUtil.getMd5Hash(rawTempPassword);
+            String encryptedPassword = PasswordUtil.getEncryptedPassword(rawTempPassword);
             String sql = "UPDATE p_user SET username=?, name=?, sys_role=?, password=NULL, temp_password=? "
                         + "WHERE id=?";
             return jt.update(sql, new Object[]{
@@ -263,7 +264,7 @@ public class UserDao {
             String sql = "UPDATE p_user SET name=? WHERE id=?";
             return jt.update(sql, new Object[]{ name, userId });
         } else {
-            String encryptedPassword = PasswordUtil.getMd5Hash(rawPassword);
+            String encryptedPassword = PasswordUtil.getEncryptedPassword(rawPassword);
             String sql = "UPDATE p_user SET name=?, password=? WHERE id=?";
             return jt.update(sql, new Object[]{ name, encryptedPassword, userId });
         }
@@ -287,6 +288,21 @@ public class UserDao {
     }
 
     private static class UserInfoRowMapper implements RowMapper<User> {
+        @Override
+        public User mapRow(ResultSet rs, int i) throws SQLException {
+            User r = new User();
+            r.setId(rs.getLong(User.ID));
+            r.setUsername(rs.getString(User.USERNAME));
+            r.setPassword(PasswordUtil.getDecryptedPassword(rs.getString(User.PASSWORD)));
+            r.setTempPassword(PasswordUtil.getDecryptedPassword(rs.getString(User.TEMP_PASSWORD)));
+            r.setName(rs.getString(User.NAME));
+            r.setSysRole(rs.getString(User.SYS_ROLE));
+            r.setType(rs.getInt(User.TYPE));
+            return r;
+        }
+    }
+
+    private static class UserInfoRowWithoutPwdMapper implements RowMapper<User> {
         @Override
         public User mapRow(ResultSet rs, int i) throws SQLException {
             User r = new User();
